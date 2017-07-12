@@ -1,15 +1,14 @@
 import os.path
 import psycopg2
 import osgeo.ogr
-import arcpy
-import glob
 
-def ImportShpToPostgres(DB, path, field):
+
+def ImportShpToPostgres(DB, pathShp, field):
     connection = psycopg2.connect(DB)
     connection.autocommit = True
     cursor = connection.cursor()
 
-    files = ([name for name in os.listdir(path)])
+    files = ([name for name in os.listdir(pathShp)])
     count = 0
     targets = []
     for file in files:
@@ -18,20 +17,26 @@ def ImportShpToPostgres(DB, path, field):
             targets.append(file)
             #print(file)
     print "Total number of files = " + str(count)
-
+    tables = []
     for file in targets:
         fileName = file.split(".")[0]
+        tables.append(fileName)
         print fileName
-        srcFile = os.path.join(path, file)
-        shapefile = osgeo.ogr.Open(srcFile)
+        srcFile = os.path.join(pathShp, file)
+        shapefile = osgeo.ogr.Open(srcFile,1)
         layer = shapefile.GetLayer(0)
         cursor.execute('DROP TABLE IF EXISTS '+fileName)
-        cursor.execute('CREATE TABLE '+ fileName+' ('+field+' CHAR(255),geom GEOMETRY)')
+        cursor.execute('CREATE TABLE '+ fileName+' (ID INT NOT NULL, '+field+' CHAR(255),geom GEOMETRY, PRIMARY KEY (ID))')
         for i in range(layer.GetFeatureCount()):
             feature = layer.GetFeature(i)
-            fieldName = feature.GetField(field).decode("Latin-1")
-            wkt = feature.GetGeometryRef().ExportToWkt()
-            cursor.execute("INSERT INTO "+fileName+" ("+field+",geom) " +"VALUES (%s, ST_GeometryFromText(%s, " +"5514))", (fieldName.encode("utf8"), wkt))
-
-    connection.commit()
-    return 0
+            fieldValue = feature.GetField(field).decode("Latin-1")
+            try:
+                wkt = feature.GetGeometryRef().ExportToWkt()
+                print i, wkt
+            except AttributeError as e:
+                print e
+                continue
+            cursor.execute("INSERT INTO "+fileName+" (ID,"+field+",geom) " +"VALUES (%s, %s, ST_GeometryFromText(%s, " +"5514))", (i, fieldValue.encode("utf8"), wkt))
+        cursor.execute("CREATE INDEX "+fileName+"_index ON "+fileName+" USING GIST(geom)")
+    #connection.commit()
+    return tables
