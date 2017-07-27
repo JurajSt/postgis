@@ -132,4 +132,5 @@ print "count ellipse %i" % ellipse_count
 print "count circle %i" % circle_count
 print "count point %i" % point_count
 
+
 print line_count+polyline_count+pw_polyline_count+arc_count+ellipse_count
