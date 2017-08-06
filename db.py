@@ -16,12 +16,12 @@ def ImportShpToPostgres(DB, pathShp, field, field1, field2):
             count = count + 1
             targets.append(file)
             #print(file)
-    print "Total number of files = " + str(count)
+    #print "Total number of files = " + str(count)
     tables = []
     for file in targets:
         fileName = file.split(".")[0]
         tables.append(fileName)
-        print fileName
+        #print fileName
         srcFile = os.path.join(pathShp, file)
         shapefile = osgeo.ogr.Open(srcFile)
         layer = shapefile.GetLayer(0)
@@ -34,7 +34,7 @@ def ImportShpToPostgres(DB, pathShp, field, field1, field2):
             fieldValue2 = feature.GetField(field2).decode("Latin-1")
             try:
                 wkt = feature.GetGeometryRef().ExportToWkt()
-                print i, wkt
+                #print i, wkt
             except AttributeError as e:
                 print e
                 continue
