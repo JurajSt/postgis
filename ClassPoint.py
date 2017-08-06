@@ -1,5 +1,5 @@
 class Point(object):
-    def __init__(self, x, y, z):
+    def __init__(self, x, y, z=0):
         """Defines x, y and z variables"""
         self.X = x
         self.Y = y
