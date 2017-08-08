@@ -52,6 +52,7 @@ def dxfToPostgis(dxfFile):
     geometry = []
     for entity in entities:  # vyber entit podla typu
         k=k+1
+        print entity.dxftype
         '''
         if entity.dxftype == "POINT":
             point_count = point_count + 1
@@ -197,10 +198,10 @@ def dxfToPostgis(dxfFile):
     print len(geometry)
     '''
 
-
-
     cursor.execute('DROP TABLE IF EXISTS test_polygon')
     cursor.execute('CREATE TABLE test_polygon (ID INT NOT NULL, objekt CHAR(50),geom GEOMETRY, PRIMARY KEY (ID))')
+
+
 
     vertices = []
     for geo in geometry:
@@ -211,18 +212,19 @@ def dxfToPostgis(dxfFile):
 
     polygon_geometry = []
     id = 1
+    indexes = []
     for vertex in vertices:     # vytvrenie polygonov z uzavretych linii (kruh, elipsa...)
         firstVertex = vertex[0]
         lastVertex = vertex[-1]
+        indInList = vertices.index(vertex)
         #print firstVertex, lastVertex
-        if firstVertex ==lastVertex:
+        if firstVertex == lastVertex:
             obj = "ring"
             ring = ogr.Geometry(ogr.wkbLinearRing)  # Create ring
             poly = ogr.Geometry(ogr.wkbPolygon)  # Create polygon
             for value in vertex:
                 val = value.split()
                 ring.AddPoint(float(val[0]), float(val[1]))
-            poly = ogr.Geometry(ogr.wkbPolygon)
             poly.AddGeometry(ring)
             wkt = poly.ExportToWkt()
             polygon_geometry.append(wkt)
@@ -230,6 +232,64 @@ def dxfToPostgis(dxfFile):
                            (id, obj, wkt, epsg))
             id = id+1
 
+        else:
+            i = 0
+            index = []
+            while i < len(vertices):
+                if i == indInList:
+                    index.append(i)
+                    i = i + 1
+                    continue
+                #print vertices[i]
+                nextFirstVertex = vertices[i][0]
+                nextLastVertex = vertices[i][-1]
+                #print "last", lastVertex
+                if lastVertex == nextFirstVertex:
+                    lastVertex = nextLastVertex
+                    index.append(i)
+                    #print "=", firstVertex, nextLastVertex
+                    if firstVertex == nextLastVertex:
+                        indexes.append(index)
+                        break
+                i= i+1
+    # kontrola
+    polygon = []
+    for ind in indexes:
+        lineToPoly = []
+        a = vertices[ind[0]][0]
+        b = vertices[ind[-1]][-1]
+        if a==b:
+            for i in ind:
+                lineToPoly.append(vertices[i])
+            polygon.append(lineToPoly)
+    obj = "ring"
+    i = 0
+    while i < len(polygon):
+        ring = ogr.Geometry(ogr.wkbLinearRing)  # Create ring
+        j = 0
+        while j <len(polygon[i]):
+            if j == 0:
+                for value in polygon[i][j]:
+                    sp = value.split()
+                    ring.AddPoint(float(sp[0]), float(sp[1]))
+            elif j > 0:
+                k = 1
+                while k < len(polygon[i][j]):
+                    sp = polygon[i][j][k].split()
+                    ring.AddPoint(float(sp[0]), float(sp[1]))
+                    k = k + 1
+            j = j+1
+        poly = ogr.Geometry(ogr.wkbPolygon)  # Create polygon
+        poly.AddGeometry(ring)
+        wkt = poly.ExportToWkt()
+        cursor.execute(
+            "INSERT INTO test_polygon (ID, objekt, geom)" + "VALUES(%s, %s, ST_GeometryFromText(%s, %s))",
+            (id, obj, wkt, epsg))
+        id = id + 1
+        i = i + 1
+
+
     cursor.execute("DROP INDEX IF EXISTS test_pol_index")
     cursor.execute("CREATE INDEX test_pol_index ON test_polygon USING GIST(geom)")
     return 0
+

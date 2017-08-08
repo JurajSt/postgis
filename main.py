@@ -7,7 +7,7 @@ import CreateOutput
 
 
 importShpToPostgres = db.ImportShpToPostgres(DB, pathKm, field, field1, field2)       #import vstupnej vrstvy (kladpar, linie a polygony)
-importDxfToPostgres = DXFtoPostgis.dxfToPostgis('vzory.dxf')
+importDxfToPostgres = DXFtoPostgis.dxfToPostgis(dxfFile)
 intersection = postgisIntersection.intersection()
 calcArea2 = calculateArea.columnArea(tableName)     # vypocet plochy pre objekty
 output = CreateOutput.CreateOutput(pathOutputXLS)

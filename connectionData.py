@@ -10,6 +10,6 @@ field1 = 'Parcela'    # nazov atributu ktory sa nahra do db
 field2 = 'KU'
 tableName = 'inters'    # nazov tabulky ktora bude vytvorena intersectom
 epsg = 5514
-pathOutputXLS = 'test.xls'
-
+pathOutputXLS = 'test.xlsx'
+dxfFile = 'vzory2.dxf'
 DB = "host=" + hostname + " user=" + username + " password=" + password + " dbname=" + database
