@@ -35,7 +35,7 @@ def dxfToPostgis(nameTable, dxfFile):
     layer_count = len(dxf.layers)  # collection of layer definitions
     block_definition_count = len(dxf.blocks)  # dict like collection of block definitions
     entity_count = len(dxf.entities)  # list like collection of entities
-    print entity_count
+    #print entity_count
     connection = psycopg2.connect(DB)  # pripoenie k db
     connection.autocommit = True
     cursor = connection.cursor()
@@ -55,7 +55,7 @@ def dxfToPostgis(nameTable, dxfFile):
     geometry = []
     c =1
     for entity in entities:  # vyber entit podla typu
-        print c, entity.dxftype
+        #print c, entity.dxftype
         c=c+1
         k=k+1
         #print entity.dxftype
