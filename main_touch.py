@@ -7,7 +7,7 @@ import intersect, Output
 
 tablesKm = db.ImportShpToPostgres(DB, pathKm, field, field1, field2)       #import kat. map; dostanem zoznam importovanych Km  >> bude len jedna
 print tablesKm
-files = ([name for name in os.listdir(pathCad)])
+files = ([name for name in os.listdir(pathCad)])    # prejde vsetky subory v zadanom adresary
 count = 0
 cadTables = []
 for file in files:
