@@ -1,15 +1,25 @@
+# pripojenie k db
 hostname = 'localhost'
 username = 'postgres'
 password = 'sql'
 database = 'postgis_23_sample'
-pathKm = 'data/test_data/km'   #ceta ku katastralnej mape
-pathCad = 'data/test_data/dxf'
-typeCadFile = 'dgn'
-field = 'Vrstva'    # nazov atributu ktory sa nahra do db
-field1 = 'Parcela'    # nazov atributu ktory sa nahra do db
-field2 = 'KU'
-tableName = 'inters'    # nazov tabulky ktora bude vytvorena intersectom
-epsg = 5514
-pathOutputXLS = 'test.xlsx'
-dxfFile = 'vzory2.dxf'
 DB = "host=" + hostname + " user=" + username + " password=" + password + " dbname=" + database
+
+# cesty k vstupom a vystupom
+pathKm = 'data/test_data/km'    # ceta ku katastralnej mape
+pathCad = 'data/test_data/dxf'  # cesta k dxf suborom
+pathOutputXLS = 'data/output/'    # cesta k xsl suboru
+typeCadFile = 'dgn'
+
+# polia ktore sa importuju z shp vrstvy kat. mapy
+field = 'Vrstva'
+field1 = 'Parcela'
+field2 = 'KU'
+
+tableName = 'inters'
+
+# kod suradnicoveho systemu
+epsg = 5514
+
+#dxfFile = 'SO_47-33-13_170309_finalny_model_V8i.dxf'            #SO_47-33-13_170309_finalny_model_V8i
+

@@ -38,7 +38,7 @@ def ImportShpToPostgres(DB, pathShp, field, field1, field2):
             except AttributeError as e:
                 print e
                 continue
-            cursor.execute("INSERT INTO "+fileName+" (ID,"+field+","+field1+","+field2+",geom) " +"VALUES (%s, %s, %s, %s, ST_GeometryFromText(%s, " +"5514))",
+            cursor.execute("INSERT INTO "+fileName+" (ID,"+field+","+field1+","+field2+",geom) " +"VALUES (%s, %s, %s, %s, ST_GeometryFromText(%s))",
                             (i, fieldValue.encode("utf8"), fieldValue1.encode("utf8"), fieldValue2.encode("utf8"), wkt))
         cursor.execute("CREATE INDEX "+fileName+"_index ON "+fileName+" USING GIST(geom)")
     #connection.commit()

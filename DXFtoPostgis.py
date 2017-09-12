@@ -4,6 +4,8 @@ import dxfgrabber
 import psycopg2
 from ClassPoint import Point
 from connectionData import *
+import ezdxf
+
 from geomet import wkt
 import json
 pi = m.pi
@@ -21,9 +23,10 @@ def fCalculateAzimuth(xf,yf, xl, yl):
 
     return Azimuth
 
-def dxfToPostgis(dxfFile):
+def dxfToPostgis(nameTable, dxfFile):
     #dxf = dxfgrabber('KN848832_3_2_I.dxf') # katastralna mapa
     dxf = dxfgrabber.readfile(dxfFile) # vykres sa musi nachadzat pri skripte
+
     #entities = dxf.modelspace()
     layers = dxf.layers         # zoznam pouzitych vrstiev vo vykrese
     entities = dxf.entities     # zoznam prvkov vo vykrese
@@ -32,7 +35,7 @@ def dxfToPostgis(dxfFile):
     layer_count = len(dxf.layers)  # collection of layer definitions
     block_definition_count = len(dxf.blocks)  # dict like collection of block definitions
     entity_count = len(dxf.entities)  # list like collection of entities
-
+    print entity_count
     connection = psycopg2.connect(DB)  # pripoenie k db
     connection.autocommit = True
     cursor = connection.cursor()
@@ -43,23 +46,26 @@ def dxfToPostgis(dxfFile):
             continue
         print layerName
     '''
-    cursor.execute('DROP TABLE IF EXISTS test')
-    cursor.execute('CREATE TABLE test (ID INT NOT NULL, typ CHAR(50),geom GEOMETRY, PRIMARY KEY (ID))')
+    cursor.execute("DROP TABLE IF EXISTS " + nameTable)
+    cursor.execute("CREATE TABLE " + nameTable + " (ID INT NOT NULL, typ CHAR(50),geom GEOMETRY, PRIMARY KEY (ID))")
 
     id = 1
     # pocitadla entit
     line_count, polyline_count, pw_polyline_count, arc_count, ellipse_count, circle_count, point_count, dsolid, dface_count, k = 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
     geometry = []
+    c =1
     for entity in entities:  # vyber entit podla typu
+        print c, entity.dxftype
+        c=c+1
         k=k+1
-        print entity.dxftype
+        #print entity.dxftype
         '''
         if entity.dxftype == "POINT":
             point_count = point_count + 1
             point = ogr.Geometry(ogr.wkbPoint)
             point.AddPoint(entity.point[0], entity.point[1])
             wkt = point.ExportToWkt()
-            cursor.execute("INSERT INTO test (ID, typ, geom)" + "VALUES (%s, %s, ST_GeometryFromText(%s, %s))",
+            cursor.execute("INSERT INTO " + nameTable + " (ID, typ, geom)" + "VALUES (%s, %s, ST_GeometryFromText(%s))",
                            (id, entity.dxftype, wkt, epsg))
             id = id+1
             '''
@@ -72,8 +78,8 @@ def dxfToPostgis(dxfFile):
             line.AddPoint(start[0], start[1], start[2])
             line.AddPoint(end[0], end[1], end[2])
             wkt = line.ExportToWkt()
-            cursor.execute("INSERT INTO test (ID, typ, geom) " + "VALUES(%s, %s, ST_GeometryFromText(%s, %s))",
-                           (id, entity.dxftype, wkt, epsg))
+            cursor.execute("INSERT INTO " + nameTable + " (ID, typ, geom) " + "VALUES(%s, %s, ST_GeometryFromText(%s))",
+                           (id, entity.dxftype, wkt))
             id = id + 1
             geometry.append(wkt)
 
@@ -85,8 +91,8 @@ def dxfToPostgis(dxfFile):
             for i in range(vertices_count):
                 line.AddPoint(vertices[i][0],vertices[i][1],vertices[i][2])
                 wkt = line.ExportToWkt()
-            cursor.execute("INSERT INTO test (ID, typ, geom) " + "VALUES(%s, %s, ST_GeometryFromText(%s, %s))",
-                           (id, entity.dxftype, wkt, epsg))
+            cursor.execute("INSERT INTO " + nameTable + " (ID, typ, geom) " + "VALUES(%s, %s, ST_GeometryFromText(%s))",
+                           (id, entity.dxftype, wkt))
             id = id + 1
             geometry.append(wkt)
 
@@ -98,8 +104,8 @@ def dxfToPostgis(dxfFile):
             for i in range(vertices_count):
                 line.AddPoint(vertices[i][0],vertices[i][1])
                 wkt = line.ExportToWkt()
-            cursor.execute("INSERT INTO test (ID, typ, geom) " + "VALUES(%s, %s, ST_GeometryFromText(%s, %s))",
-                           (id, entity.dxftype, wkt, epsg))
+            cursor.execute("INSERT INTO " + nameTable + " (ID, typ, geom) " + "VALUES(%s, %s, ST_GeometryFromText(%s))",
+                           (id, entity.dxftype, wkt))
             id = id + 1
             geometry.append(wkt)
 
@@ -121,8 +127,8 @@ def dxfToPostgis(dxfFile):
                 start_angle = start_angle + m.radians(1)
             wkt = line.ExportToWkt()
             #print wkt
-            cursor.execute("INSERT INTO test (ID, typ, geom)" + "VALUES(%s, %s, ST_GeometryFromText(%s, %s))",
-                           (id, entity.dxftype, wkt, epsg))
+            cursor.execute("INSERT INTO " + nameTable + " (ID, typ, geom)" + "VALUES(%s, %s, ST_GeometryFromText(%s))",
+                           (id, entity.dxftype, wkt))
             id = id + 1
             geometry.append(wkt)
 
@@ -147,19 +153,26 @@ def dxfToPostgis(dxfFile):
             if round(end_param,5) == round(2*pi,5) and round(start_param,5) <> round(0.0,5):   # ak by nebolo -pi elipsa je o pi otocena dovod - zatial neznami
                 end_param = start_param - pi
                 start_param = 0
-
+            a=0
             while start_param <= end_param:
+
                 xi = a * m.cos(start_param)
                 yi = b * m.sin(start_param)
                 xe = m.sin(m.radians(azimut))*xi - m.cos(m.radians(azimut))*yi
                 ye = m.sin(m.radians(azimut))*yi + m.cos(m.radians(azimut))*xi
-                start_param = start_param+m.radians(1)
+                if (end_param-start_param) < m.radians(1):
+                    start_param = start_param + (end_param-start_param)
+                    start_param = start_param + a
+                    a=1
+                else:
+                    start_param = start_param+m.radians(1)
                 p = Point(centerPoint.getX() + xe, centerPoint.getY() + ye)
                 line.AddPoint(p.getX(), p.getY())
                 #print p.getX(), p.getY()
             wkt = line.ExportToWkt()
-            cursor.execute("INSERT INTO test (ID, typ, geom)" + "VALUES(%s, %s, ST_GeometryFromText(%s, %s))",
-                           (id, entity.dxftype, wkt, epsg))
+            print wkt
+            cursor.execute("INSERT INTO " + nameTable + " (ID, typ, geom)" + "VALUES(%s, %s, ST_GeometryFromText(%s))",
+                           (id, entity.dxftype, wkt))
             id = id + 1
             geometry.append(wkt)
 
@@ -174,13 +187,13 @@ def dxfToPostgis(dxfFile):
                 line.AddPoint(p.getX(), p.getY())
                 i = i + m.radians(1)
             wkt = line.ExportToWkt()
-            cursor.execute("INSERT INTO test (ID, typ, geom)" + "VALUES(%s, %s, ST_GeometryFromText(%s, %s))",
-                           (id, entity.dxftype, wkt, epsg))
+            cursor.execute("INSERT INTO " + nameTable + " (ID, typ, geom)" + "VALUES(%s, %s, ST_GeometryFromText(%s))",
+                           (id, entity.dxftype, wkt))
             id = id + 1
             geometry.append(wkt)
 
-    cursor.execute("DROP INDEX IF EXISTS test_index")
-    cursor.execute("CREATE INDEX test_index ON test USING GIST(geom)")
+    cursor.execute("DROP INDEX IF EXISTS " + nameTable + "_index")
+    cursor.execute("CREATE INDEX " + nameTable + "_index ON test USING GIST(geom)")
 
             #else:
             #    print k, entity.dxftype
@@ -198,98 +211,5 @@ def dxfToPostgis(dxfFile):
     print len(geometry)
     '''
 
-    cursor.execute('DROP TABLE IF EXISTS test_polygon')
-    cursor.execute('CREATE TABLE test_polygon (ID INT NOT NULL, objekt CHAR(50),geom GEOMETRY, PRIMARY KEY (ID))')
-
-
-
-    vertices = []
-    for geo in geometry:
-        re = geo.replace(")","")
-        sp = re.split("(")
-        sp = sp[1].split(",")
-        vertices.append(sp)
-
-    polygon_geometry = []
-    id = 1
-    indexes = []
-    for vertex in vertices:     # vytvrenie polygonov z uzavretych linii (kruh, elipsa...)
-        firstVertex = vertex[0]
-        lastVertex = vertex[-1]
-        indInList = vertices.index(vertex)
-        #print firstVertex, lastVertex
-        if firstVertex == lastVertex:
-            obj = "ring"
-            ring = ogr.Geometry(ogr.wkbLinearRing)  # Create ring
-            poly = ogr.Geometry(ogr.wkbPolygon)  # Create polygon
-            for value in vertex:
-                val = value.split()
-                ring.AddPoint(float(val[0]), float(val[1]))
-            poly.AddGeometry(ring)
-            wkt = poly.ExportToWkt()
-            polygon_geometry.append(wkt)
-            cursor.execute("INSERT INTO test_polygon (ID, objekt, geom)" + "VALUES(%s, %s, ST_GeometryFromText(%s, %s))",
-                           (id, obj, wkt, epsg))
-            id = id+1
-
-        else:
-            i = 0
-            index = []
-            while i < len(vertices):
-                if i == indInList:
-                    index.append(i)
-                    i = i + 1
-                    continue
-                #print vertices[i]
-                nextFirstVertex = vertices[i][0]
-                nextLastVertex = vertices[i][-1]
-                #print "last", lastVertex
-                if lastVertex == nextFirstVertex:
-                    lastVertex = nextLastVertex
-                    index.append(i)
-                    #print "=", firstVertex, nextLastVertex
-                    if firstVertex == nextLastVertex:
-                        indexes.append(index)
-                        break
-                i= i+1
-    # kontrola
-    polygon = []
-    for ind in indexes:
-        lineToPoly = []
-        a = vertices[ind[0]][0]
-        b = vertices[ind[-1]][-1]
-        if a==b:
-            for i in ind:
-                lineToPoly.append(vertices[i])
-            polygon.append(lineToPoly)
-    obj = "ring"
-    i = 0
-    while i < len(polygon):
-        ring = ogr.Geometry(ogr.wkbLinearRing)  # Create ring
-        j = 0
-        while j <len(polygon[i]):
-            if j == 0:
-                for value in polygon[i][j]:
-                    sp = value.split()
-                    ring.AddPoint(float(sp[0]), float(sp[1]))
-            elif j > 0:
-                k = 1
-                while k < len(polygon[i][j]):
-                    sp = polygon[i][j][k].split()
-                    ring.AddPoint(float(sp[0]), float(sp[1]))
-                    k = k + 1
-            j = j+1
-        poly = ogr.Geometry(ogr.wkbPolygon)  # Create polygon
-        poly.AddGeometry(ring)
-        wkt = poly.ExportToWkt()
-        cursor.execute(
-            "INSERT INTO test_polygon (ID, objekt, geom)" + "VALUES(%s, %s, ST_GeometryFromText(%s, %s))",
-            (id, obj, wkt, epsg))
-        id = id + 1
-        i = i + 1
-
-
-    cursor.execute("DROP INDEX IF EXISTS test_pol_index")
-    cursor.execute("CREATE INDEX test_pol_index ON test_polygon USING GIST(geom)")
-    return 0
+    return geometry
 
